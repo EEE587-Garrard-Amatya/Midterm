@@ -136,48 +136,83 @@ P[10][2] = [(1, 10, -1, True)]
 P[10][3] = [(1, 10, -1, True)]
 
 
-# policy = [(0, 1),
-#           (0, 1),
-#           (2, 1),
-#           (2, 1),
-#           (2, 1),
-#           (0, 1),
-#           (3, 1),
-#           (3, 1),
-#           (3, 1)]
-
-policy = [0, 0, 2, 2, 2, 1, 3, 3, 3, 0, 0]
-
-def policy_eval():
-    # Initialize thel value function
+def policy_eval(policy):
+    # Initialize expected values to zero
     V = np.zeros(ns)
+    # hard code the terminal state values
     V[9] = 1
     V[10] = -1
-    # While our value function is worse than the threshold theta
     while True:
         # Keep track of the update done in value function
         delta = 0
-        # For each state, look ahead one step at each possible action and next state
-        for s in range(ns - 2):
+        for s in range(ns - 2):  # -2 because we don't consider the terminal states
             v = 0
-            # print(s)
-            # The possible next actions, policy[s]:[a,action_prob]
+            # What the action is for a given state
             a = policy[s]
             # For each action, look at the possible next states,
-            # print(P[s][a])
             for prob, next_state, reward, done in P[s][a]:  # state transition P[s][a] == [(prob, nextstate, reward, done), ...]
                 # Calculate the expected value function
                 v += prob * (reward + V[next_state])  # P[s, a, s']*(R(s,a,s')+γV[s'])
-                # print(v)
-                # How much our value function changed across any states .
+            # How much our value function changed across any states .
             delta = max(delta, np.abs(v - V[s]))
             V[s] = v
-            print("s: " + str(s) + "\tV[s]: " + str(V[s]))
         # Stop evaluating once our value function update is below a threshold
-        if delta < 0.00001:
+        if delta < 0.0000000000001:
             break
     return np.array(V)
 
 
+def policy_improvement(policy):
+    while True:
+        V = policy_eval(policy)
+        policy_stable = True
+        for s in range(ns):
+            chosen_a = policy[s]
+            action_values = np.zeros(na)
+            for a in range(na):
+                for prob, next_state, reward, done in P[s][a]:
+                    action_values[a] += prob * (reward + V[next_state])
+            best_a = np.argmax(action_values)
+
+            if chosen_a != best_a:
+                policy_stable = False
+            policy[s] = best_a
+        if policy_stable:
+            return policy
+
+
+def print_policy_value(policy):
+    """
+    Prints the policy value given the policy value
+    :param pvalue: list of expected values given a
+    :return:
+    """
+    print("Policy value, using states as defined by Professor Si:")
+    pvalue = policy_eval(policy)
+    directions = {0: "N",
+                  1: "S",
+                  2: "E",
+                  3: "W"}
+    for i in range(len(pvalue) - 2):
+        print("State %d: Action %s: Expected Value: %3.7f" % (i+1, directions[policy[i]], pvalue[i]))
+    print("")
+
+
 if __name__ == "__main__":
-    arr = policy_eval()
+    # Initial policy with state 6 south
+    print("Evaluating policy given by Professor Si")
+    initial_policy = [0, 0, 2, 2, 2, 1, 3, 3, 3, 0, 0]
+    print_policy_value(initial_policy)
+
+    # Perform policy iteration
+    print("Performing policy iteration")
+    optimal_policy = policy_improvement(initial_policy)
+    print_policy_value(optimal_policy)
+
+    # Another feasible policy
+    print("Evaluating a north-only policy")
+    north_policy = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    print_policy_value(north_policy)
+    print("Improve the north-only policy")
+    optimal_policy = policy_improvement(north_policy)
+    print_policy_value(optimal_policy)
