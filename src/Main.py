@@ -181,6 +181,48 @@ def policy_improvement(policy):
             return policy
 
 
+def value_iteration():
+    # Look ahead one step at each possible action and next state (full backup)
+    def one_step_lookahead(state, V):
+        A = np.zeros(na)
+        for a in range(na):
+            for prob, next_state, reward, done in P[state][a]:
+                A[a] += prob * (reward + V[next_state])
+        return A
+
+    V = np.zeros(ns)
+    V[9] = 1
+    V[10] = -1
+    while True:
+        # Stopping condition
+        delta = 0
+        # Update each state...
+        for s in range(ns-2):
+            # Do a one-step lookahead to find the best action
+            A = one_step_lookahead(s, V)
+            best_action_value = np.max(A)
+            # Calculate delta across all states seen so far
+            delta = max(delta, np.abs(best_action_value - V[s]))
+            # Update the value function
+            V[s] = best_action_value
+            # Check if we can stop
+        if delta < 0.00000000001:
+            break
+
+    # Create a deterministic policy using the optimal value function
+    policy = np.zeros([ns, na])
+    for s in range(ns-2):
+        # One step lookahead to find the best action for this state
+        A = one_step_lookahead(s, V)
+        best_action = np.argmax(A)
+        # Always take the best action
+        policy[s, best_action] = 1.0
+
+    policy = np.argmax(policy, 1)
+    return policy, V
+
+
+
 def print_policy_value(policy):
     """
     Prints the policy value given the policy value
@@ -216,3 +258,8 @@ if __name__ == "__main__":
     print("Improve the north-only policy")
     optimal_policy = policy_improvement(north_policy)
     print_policy_value(optimal_policy)
+
+    # Create policy through value iteration
+    print("Using value iteration to create policy")
+    value_policy, value = value_iteration()
+    print_policy_value(value_policy)
