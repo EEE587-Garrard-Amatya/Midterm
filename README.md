@@ -1,1 +1,3 @@
-# EEE587_Assignment_9_Policy_Improvement
+# EEE587_Midterm
+Sunny Amatya
+YiZhuang Garrard
