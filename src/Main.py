@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
 import numpy as np
 
 ns = 11  # Number of states
 na = 4  # Number of actions
 P = [[[] for x in range(na)] for y in range(ns)]
+Q_values = np.zeros((ns, na))
+directions = {0: "N",
+              1: "S",
+              2: "E",
+              3: "W"}
 
 # state-action probability transition matrix
 # [state][action]
@@ -226,22 +230,93 @@ def value_iteration():
     return policy, V
 
 
-
 def print_policy_value(policy):
     """
     Prints the policy value given the policy value
     :param pvalue: list of expected values given a
     :return:
     """
+    global directions
     print("Policy value, using states as defined by Professor Si:")
     pvalue = policy_eval(policy)
-    directions = {0: "N",
-                  1: "S",
-                  2: "E",
-                  3: "W"}
     for i in range(len(pvalue) - 2):
         print("State %d: Action %s: Expected Value: %3.7f" % (i+1, directions[policy[i]], pvalue[i]))
     print("")
+
+
+def print_policy(policy):
+    global directions
+    print("Policy, using states as defined by Professor Si:")
+    for i in range(len(policy) - 1):
+        print("State %d: Action %s" % (i+1, directions[policy[i]]))
+    print("")
+
+
+def q_learn(episodes):
+    global Q_values, directions
+    alpha = 0.2
+    gamma = 1
+    exploration_rate_initial = 0.3
+    action = None
+
+    for i in range(episodes):
+        episode_complete = False
+        state = np.random.choice([0, 1, 2, 3, 4, 5, 6, 7, 8])
+        cumulative_reward = 0
+        states = []
+        # Gradually reduce learning rate
+        exploration_rate = exploration_rate_initial - (i/episodes) * exploration_rate_initial
+        while True:
+            # Choose an action
+            # If random number is less than learning rate, then explore randomly
+            if np.random.uniform(0, 1) <= exploration_rate:
+                # print("Trying something random")
+                action = np.random.choice([0, 1, 2, 3])
+            # Otherwise choose the action with the maximum reward associated with it
+            else:
+                # print("Choosing action associated with maximum reward")
+                max_state_transition_reward = -1000
+                for a in [0, 1, 2, 3]:
+                    state_transition_reward = Q_values[state][a]
+                    if state_transition_reward > max_state_transition_reward:
+                        max_state_transition_reward = state_transition_reward
+                        action = a
+
+            # Record what state-action pair the agent took
+            states.append([state, action])
+            # print("Current state: %d\t Action taken: %c" % (state+1, directions[action]))
+
+            # Determine which state the agent will end up in
+            next_state_prob = np.random.uniform(0, 1)
+            if next_state_prob <= 0.8:
+                state = P[state][action][0][1]
+                # print("Went in desired direction")
+            elif next_state_prob <= 0.9:
+                state = P[state][action][1][1]
+                # print("Went left of desired direction")
+            else:
+                state = P[state][action][2][1]
+                # print("Went right of desired direction")
+            cumulative_reward -= 0.2    # Every state transition has this penalty
+            # print("Next state: %s: Cumulative Reward: %f" % (state+1, cumulative_reward))
+            # print("------------------------------------------------------------------")
+
+            # If terminal condition is reached, end the episode
+            if P[state][0][0][3]:
+                cumulative_reward += P[state][0][0][2]
+                # print("Reached terminal state. Total reward: %f" % cumulative_reward)
+                episode_complete = True
+
+            # Update the Q-table every step
+            for s in reversed(states):
+                current_q_value = Q_values[s[0]][s[1]]
+                max_future_q_value = max(Q_values[s[0]])
+                # Q_values[s[0]][s[1]] = current_q_value + alpha * (cumulative_reward + gamma * max_future_q_value - current_q_value)
+                Q_values[s[0]][s[1]] = current_q_value + alpha * (gamma * cumulative_reward - current_q_value)
+
+            if episode_complete:
+                # print(Q_values)
+                break
 
 
 if __name__ == "__main__":
@@ -257,3 +332,11 @@ if __name__ == "__main__":
     print("Using value iteration to create policy")
     value_policy, value = value_iteration()
     print_policy_value(value_policy)
+
+    # Find optimal policy via Q-learning
+    print("Using Q-learning to find optimal policy")
+    q_learn(10000)
+    print("Q-table")
+    print(Q_values)
+    print_policy(np.argmax(Q_values, axis=1))
+
